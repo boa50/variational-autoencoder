@@ -38,3 +38,17 @@ def plot_label_clusters(encoder, decoder, data, labels):
     plt.xlabel("z[0]")
     plt.ylabel("z[1]")
     plt.show()
+
+def generate_images(decoder, latent_dim, num=10):
+    reconst_images = decoder.predict(np.random.normal(0,1,size=(num,latent_dim)))
+
+    fig = plt.figure(figsize=(15, 3))
+    fig.subplots_adjust(hspace=0.4, wspace=0.4)
+
+    for i in range(num):
+        img = reconst_images[i].squeeze()
+        sub = fig.add_subplot(2, num, i+1)
+        sub.axis('off')        
+        sub.imshow(img)
+    
+    plt.show()
