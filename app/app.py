@@ -1,81 +1,81 @@
 import numpy as np
+import os
+from glob import glob
+
 from tensorflow import keras
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 from vae import VAE
-from plots import plot_label_clusters, plot_latent, generate_images
+from plots import generate_images, generate_reconstructions
 
 def config_gpu():
     config = ConfigProto()
     config.gpu_options.allow_growth = True
     sess = InteractiveSession(config=config)
 
-def prepare_data():
-    (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
-    
-    images = np.concatenate([x_train, x_test], axis=0)
-    labels = np.concatenate([y_train, y_test], axis=0)
-
-    images = np.expand_dims(images, -1).astype("float32") / 255
-
-    return images, labels, images.shape[1]
-
-if __name__ == '__main__':
-    config_gpu()
-
-    # images, labels, image_size = prepare_data()
-
-    latent_dim = 128
-    epochs = 20
-    batch_size = 512
-
-    # vae = VAE(image_size, latent_dim)
-    # vae.compile(optimizer='adam')
-    # vae.fit(images, epochs=epochs, batch_size=batch_size)
-
-    # plot_latent(vae.encoder, vae.decoder, image_size, n=10)
-
-    # plot_label_clusters(vae.encoder, vae.decoder, images, labels)
-
+def check_corrupted_images(filenames):
     from PIL import Image
-    import matplotlib.pyplot as plt
-    from tensorflow.keras.preprocessing.image import ImageDataGenerator
-    import os
-    import numpy as np
-    from glob import glob
-    
+
+    for filename in filenames:
+        try:
+            im = Image.open(filename)
+            im.verify()
+        except:
+            print(filename)
+
+
+def prepare_data(img_size, batch_size, check_corrupted=False):
     img_path = 'app/dataset/'
 
     filenames = np.array(glob(os.path.join(img_path, '*/*.jpg')))
     num_images = len(filenames)
 
+    if check_corrupted:
+        check_corrupted_images(filenames)
 
-    # for filename in filenames:
-    #     try:
-    #         im = Image.open(filename)
-    #         im.verify()
-    #     except:
-    #         print(filename)
-        
+    datagen = ImageDataGenerator(rescale=1./255)
 
+    data_flow = datagen.flow_from_directory(
+        img_path,
+        target_size=(img_size, img_size),
+        shuffle=True,
+        batch_size=batch_size,
+        class_mode='input')
+
+    return data_flow, num_images
+
+if __name__ == '__main__':
+    config_gpu()
+
+    latent_dim = 256
+    epochs = 200
+    batch_size = 256
     img_size = 64
 
     vae = VAE(img_size, latent_dim)
     model = vae.model_build()
 
-    # datagen = ImageDataGenerator(rescale=1./255)
+    data_flow, num_images = prepare_data(img_size, batch_size)
 
-    # data_flow = datagen.flow_from_directory(
-    #     img_path,
-    #     target_size=(img_size, img_size),
-    #     shuffle=True,
-    #     batch_size=batch_size,
-    #     class_mode='input')
+    steps_per_epoch = num_images // batch_size
+    save_period = 10
 
-    # bestweights = keras.callbacks.ModelCheckpoint(filepath='app/saves/weights.h5', save_weights_only=True, verbose=1)
-    # history = model.fit(data_flow, epochs=epochs, steps_per_epoch=(num_images // batch_size), callbacks=[bestweights])
+    weights_cb = keras.callbacks.ModelCheckpoint(
+        filepath='app/saves/weights_l256_64_256_{epoch:02d}.h5', 
+        save_weights_only=True,
+        save_freq=int(save_period * steps_per_epoch)
+        verbose=0)
+
+    model.fit(
+        data_flow, 
+        epochs=epochs, 
+        steps_per_epoch=steps_per_epoch, 
+        callbacks=[weights_cb], 
+        verbose=0)
     
-    model.load_weights('app/saves/weights.h5')
+    # model.load_weights('app/saves/weights_128_100.h5')
 
-    generate_images(vae.decoder, latent_dim, num=5)
+    # generate_images(vae.decoder, latent_dim)
+    generate_reconstructions(model, data_flow)
