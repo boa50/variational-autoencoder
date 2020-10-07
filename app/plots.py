@@ -4,12 +4,17 @@ import matplotlib.pyplot as plt
 def generate_images(decoder, latent_dim, num=10):
     reconst_images = decoder.predict(np.random.normal(0,1,size=(num,latent_dim)))
 
-    fig = plt.figure(figsize=(15, 3))
+    n_cols = 5
+    n_rows = int(num / n_cols) + 1
+    height = 3 * n_rows
+    width = 15
+
+    fig = plt.figure(figsize=(width, height))
     fig.subplots_adjust(hspace=0.4, wspace=0.4)
 
     for i in range(num):
         img = reconst_images[i].squeeze()
-        sub = fig.add_subplot(2, num, i+1)
+        sub = fig.add_subplot(n_rows, n_cols, i+1)
         sub.axis('off')        
         sub.imshow(img)
     

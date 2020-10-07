@@ -4,25 +4,34 @@ from tensorflow import keras
 from tensorflow.keras.models import Model
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras import layers
+from tensorflow.keras.layers import Conv2D, Conv2DTranspose, ReLU, BatchNormalization, Flatten, Dense, Reshape, LeakyReLU, Activation
 
 class VAE():
     def __init__(self, image_size, latent_dim):
         self.image_size = image_size
         self.latent_dim = latent_dim
+        self.units_init = 64
+        self.num_conv_layers = 4
         self.encoder = self.encoder_build()
         self.decoder = self.decoder_build()
 
     def encoder_build(self):
         self.encoder_inputs = keras.Input(shape=(self.image_size, self.image_size, 3))
-        x = layers.Conv2D(64, 3, activation="relu", strides=2, padding="same")(self.encoder_inputs)
-        x = layers.Conv2D(128, 3, activation="relu", strides=2, padding="same")(x)
-        x = layers.Conv2D(256, 3, activation="relu", strides=2, padding="same")(x)
-        # x = layers.Conv2D(512, 3, activation="relu", strides=2, padding="same")(x)
+        x = self.encoder_inputs
+
+        for i in range(self.num_conv_layers):
+            num_units = self.units_init * (2**i)
+            
+            x = Conv2D(num_units, 3, strides=2, padding="same")(x)
+            x = ReLU()(x)
+            # x = LeakyReLU(0.2)(x)
+
         self.encoder_last_shape = x.shape[1:]
 
-        x = layers.Flatten()(x)
-        z_mean = layers.Dense(self.latent_dim, name="z_mean")(x)
-        z_log_var = layers.Dense(self.latent_dim, name="z_log_var")(x)
+        x = Flatten()(x)
+        x = Dense(self.latent_dim * 2)(x)
+        z_mean = Dense(self.latent_dim, name="z_mean")(x)
+        z_log_var = Dense(self.latent_dim, name="z_log_var")(x)
         z = Sampling()([z_mean, z_log_var])
         encoder = keras.Model(self.encoder_inputs, [z_mean, z_log_var, z])
 
@@ -30,13 +39,18 @@ class VAE():
 
     def decoder_build(self):
         latent_inputs = keras.Input(shape=(self.latent_dim,))
-        x = layers.Dense(np.prod(self.encoder_last_shape))(latent_inputs)
-        x = layers.Reshape(self.encoder_last_shape)(x)
-        # x = layers.Conv2DTranspose(512, 3, activation="relu", strides=2, padding="same")(x)
-        x = layers.Conv2DTranspose(256, 3, activation="relu", strides=2, padding="same")(x)
-        x = layers.Conv2DTranspose(128, 3, activation="relu", strides=2, padding="same")(x)
-        x = layers.Conv2DTranspose(64, 3, activation="relu", strides=2, padding="same")(x)
-        decoder_outputs = layers.Conv2DTranspose(3, 3, activation="sigmoid", padding="same")(x)
+        x = Dense(np.prod(self.encoder_last_shape))(latent_inputs)
+        x = Reshape(self.encoder_last_shape)(x)
+
+        for i in range(self.num_conv_layers):
+            exp = -1 * (i + 1 - self.num_conv_layers)
+            num_units = self.units_init * (2**exp)
+
+            x = Conv2DTranspose(num_units, 3, strides=2, padding="same")(x)
+            x = ReLU()(x)
+            # x = LeakyReLU(0.2)(x)
+
+        decoder_outputs = Conv2DTranspose(3, 3, activation="sigmoid", padding="same")(x)
         decoder = keras.Model(latent_inputs, decoder_outputs)
 
         return decoder

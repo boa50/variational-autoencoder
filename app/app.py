@@ -49,9 +49,9 @@ def prepare_data(img_size, batch_size, check_corrupted=False):
 if __name__ == '__main__':
     config_gpu()
 
-    latent_dim = 256
-    epochs = 200
-    batch_size = 256
+    latent_dim = 32
+    epochs = 1000
+    batch_size = 128
     img_size = 64
 
     vae = VAE(img_size, latent_dim)
@@ -62,20 +62,20 @@ if __name__ == '__main__':
     steps_per_epoch = num_images // batch_size
     save_period = 10
 
-    weights_cb = keras.callbacks.ModelCheckpoint(
-        filepath='app/saves/weights_l256_64_256_{epoch:02d}.h5', 
-        save_weights_only=True,
-        save_freq=int(save_period * steps_per_epoch)
-        verbose=0)
+    # weights_cb = keras.callbacks.ModelCheckpoint(
+    #     filepath='app/saves/weights_l32_64_4_{epoch:02d}.h5', 
+    #     save_weights_only=True,
+    #     save_freq=int(save_period * steps_per_epoch),
+    #     verbose=0)
 
-    model.fit(
-        data_flow, 
-        epochs=epochs, 
-        steps_per_epoch=steps_per_epoch, 
-        callbacks=[weights_cb], 
-        verbose=0)
-    
-    # model.load_weights('app/saves/weights_128_100.h5')
+    # model.fit(
+    #     data_flow, 
+    #     epochs=epochs, 
+    #     steps_per_epoch=steps_per_epoch, 
+    #     callbacks=[weights_cb], 
+    #     verbose=1)
 
-    # generate_images(vae.decoder, latent_dim)
-    generate_reconstructions(model, data_flow)
+    model.load_weights('app/saves/weights_l32_64_4_800.h5')
+
+    # generate_reconstructions(model, data_flow)
+    generate_images(vae.decoder, latent_dim, num=20)
