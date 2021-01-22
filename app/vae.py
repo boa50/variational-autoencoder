@@ -4,7 +4,7 @@ from tensorflow import keras
 from tensorflow.keras.models import Model
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras import layers
-from tensorflow.keras.layers import Conv2D, Conv2DTranspose, ReLU, BatchNormalization, Flatten, Dense, Reshape, LeakyReLU, Activation
+from tensorflow.keras.layers import Conv2D, Conv2DTranspose, ReLU, BatchNormalization, Flatten, Dense, Reshape
 
 class VAE():
     def __init__(self, image_size, latent_dim):
@@ -24,7 +24,6 @@ class VAE():
             
             x = Conv2D(num_units, 3, strides=2, padding="same")(x)
             x = ReLU()(x)
-            # x = LeakyReLU(0.2)(x)
 
         self.encoder_last_shape = x.shape[1:]
 
@@ -48,7 +47,6 @@ class VAE():
 
             x = Conv2DTranspose(num_units, 3, strides=2, padding="same")(x)
             x = ReLU()(x)
-            # x = LeakyReLU(0.2)(x)
 
         decoder_outputs = Conv2DTranspose(3, 3, activation="sigmoid", padding="same")(x)
         decoder = keras.Model(latent_inputs, decoder_outputs)
